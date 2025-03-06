@@ -7,17 +7,18 @@
     <style>
         body {
             margin: 0;
-            height: 100vh;
+            min-height: 100vh;
             background: #000;
             font-family: 'Comic Sans MS', cursive;
             overflow: hidden;
-            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .page {
             position: absolute;
             width: 100%;
-            height: 100%;
+            min-height: 100vh;
+            /* 关键修正 */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -27,41 +28,49 @@
             transition: 1s;
             transform: scale(0.8);
             perspective: 1000px;
+            box-sizing: border-box;
+            padding: 20px;
         }
 
         .active {
             opacity: 1;
-            transform: scale(1);
+            transform: scale(1) !important;
+            /* 强制覆盖其他变换 */
             z-index: 1;
             animation: pageIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
         }
 
         #page1 {
             background: #ff0066;
-            font-size: 4em;
+            font-size: clamp(3rem, 12vw, 4em);
+            /* 响应式字体 */
             text-shadow: 3px 3px 0 #000;
             animation: blink 1s infinite;
+            text-align: center;
         }
 
         #page2 {
             background: #ff9900;
-            font-size: 2.5em;
+            font-size: clamp(1.5rem, 6vw, 2.5em);
             text-align: center;
         }
 
         #page3 {
             background: #00cc66;
-            font-size: 3em;
+            font-size: clamp(2rem, 8vw, 3em);
         }
 
         #page4 {
             background: #6633ff;
-            font-size: 2em;
+            font-size: clamp(1.5rem, 6vw, 2em);
             text-align: center;
         }
 
         .firework {
-            position: absolute;
+            position: fixed;
+            /* 改为fixed定位 */
+            pointer-events: none;
+            /* 防止点击穿透 */
             width: 10px;
             height: 10px;
             background: gold;
@@ -121,21 +130,26 @@
 
         .photo-grid {
             display: grid;
-            gap: 20px;
-            margin-top: 30px;
+            gap: 15px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 500px;
             opacity: 0;
             transform: translateY(50px);
             transition: 1s;
         }
 
         .photo {
-            width: 300px;
-            height: 400px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 3/4;
+            /* 保持比例 */
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             background: #fff;
             overflow: hidden;
             position: relative;
+            background-image: url('/pic1.jpg');
         }
 
         .photo::after {
@@ -173,6 +187,16 @@
         .floating {
             animation: float 3s ease-in-out infinite;
         }
+
+        .photo-img {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            object-fit: cover;
+            aspect-ratio: 3/4;
+            /* 保持4:3比例 */
+        }
     </style>
 </head>
 
@@ -193,11 +217,15 @@
         <h2>致最棒的苏怡：</h2>
         <p>集中精力，中考必胜！</p>
         <p>最后冲刺阶段要像🐰一样专注</p>
-        <p>你的家人尤其是🥚蛋蛋</p>
+        <p>你的家人尤其是蛋蛋</p>
         <p>一直在背后为你打call！</p>
         <div class="photo-grid">
+            <!--
             <div class="photo" style="background: #FFB6C1"></div>
             <div class="photo" style="background: #87CEFA"></div>
+            -->
+            <img src="./pic1.jpg" alt="" class="photo-img">
+            <img src="./pic2.jpg" alt="" class="photo-img">
         </div>
         <div style="font-size: 3em" class="floating">🎉✨🚀</div>
     </div>
@@ -211,41 +239,78 @@
         ];
 
         let currentPage = 1;
+        let isAnimating = false; // 新增动画锁
 
-        document.body.addEventListener('click', () => {
-            if (currentPage >= 4) return;
+        function handleInteraction() {
+            if (isAnimating || currentPage >= 4) return;
+            isAnimating = true;
 
             // 添加烟花特效
-            for (let i = 0; i < 20; i++) {
+            const createFirework = () => {
                 const firework = document.createElement('div');
                 firework.className = 'firework';
                 firework.style.left = Math.random() * 100 + 'vw';
                 firework.style.top = Math.random() * 100 + 'vh';
-                firework.style.setProperty('--x', (Math.random() - 0.5) * 100 + 'px');
-                firework.style.setProperty('--y', (Math.random() - 0.5) * 100 + 'px');
+                firework.style.setProperty('--x', (Math.random() - 0.5) * 50 + 'px');
+                firework.style.setProperty('--y', (Math.random() - 0.5) * 50 + 'px');
                 document.body.appendChild(firework);
                 setTimeout(() => firework.remove(), 1000);
             }
-            const nextTransition = transitions[Math.floor(Math.random() * transitions.length)];
+
+            // 减少烟花数量
+            for (let i = 0; i < 8; i++) {
+                setTimeout(createFirework, i * 50);
+            }
 
             const current = document.getElementById(`page${currentPage}`);
             current.style.animation = `pageOut 0.8s forwards`;
+
+            transitions.forEach(t => current.classList.remove(t));
             current.classList.remove('active');
 
-            document.getElementById(`page${currentPage}`).classList.remove('active');
             currentPage++;
             if (currentPage <= 4) {
                 const next = document.getElementById(`page${currentPage}`);
-                next.classList.add(nextTransition, 'active');
+                transitions.forEach(t => next.classList.remove(t));
+                next.classList.add(
+                    transitions[Math.floor(Math.random() * transitions.length)],
+                    'active'
+                );
 
-                // 第四页特殊处理
                 if (currentPage === 4) {
                     setTimeout(() => {
                         document.querySelector('.photo-grid').classList.add('show-photos');
-                    }, 1000);
+                    }, 800);
                 }
             }
-        });
+
+            setTimeout(() => isAnimating = false, 800);
+        }
+
+        // 统一事件监听
+        const supportsTouch = 'ontouchstart' in window;
+
+        // 桌面端监听点击事件
+        if (!supportsTouch) {
+            document.addEventListener('click', handleInteraction);
+        }
+        // 移动端监听触摸事件
+        else {
+            let touchStartTime = 0;
+
+            document.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                e.preventDefault(); // 仅阻止默认滚动行为
+            }, { passive: false });
+
+            document.addEventListener('touchend', (e) => {
+                // 过滤长按操作（超过300ms不响应）
+                if (Date.now() - touchStartTime < 300) {
+                    handleInteraction();
+                }
+                e.preventDefault();
+            }, { passive: false });
+        }
 
         // 添加随机表情彩蛋
         const emojis = ['🎁', '🎈', '💪', '📚', '🏆'];
@@ -262,7 +327,17 @@
             }
         });
 
+        // 新增视口高度修正
+        function updateViewportHeight() {
+            document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
+        }
+        window.addEventListener('resize', updateViewportHeight);
+        updateViewportHeight();
 
+        // 优化移动端点击
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
     </script>
 </body>
 
