@@ -8,7 +8,7 @@
 
 const CONFIG = {
     // 把它替换成你的 API key
-    API_KEY: $2a$10$aJAbwpVr2jDHvBIK1zQQ0ewqaSRW5Ym98T2Eveqe3ZtRkWY85cqj6,
+    API_KEY: '$2a$10$aJAbwpVr2jDHvBIK1zQQ0ewqaSRW5Ym98T2Eveqe3ZtRkWY85cqj6',
     // 把它替换成你的 Bin ID
-    BIN_ID: 68c21d85ae596e708fea5816
+    BIN_ID: '68c21d85ae596e708fea5816'
 };
