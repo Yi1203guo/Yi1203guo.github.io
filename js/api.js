@@ -7,8 +7,8 @@ const headers = {
 
 // 获取最新版本的数据
 async function getLatestData() {
-    // 使用/latest来获取最新版本, 避免缓存问题
-    const response = await fetch(`${API_URL}/latest`, {
+    // 不再使用 /latest, 直接获取 bin 的内容
+    const response = await fetch(API_URL, {
         method: 'GET',
         headers: headers
     });
