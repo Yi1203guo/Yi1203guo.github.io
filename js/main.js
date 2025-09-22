@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function render() {
         showLoading('加载中...');
         try {
-            // 检查配置
             if (CONFIG.API_KEY === 'YOUR_API_KEY' || CONFIG.BIN_ID === 'YOUR_BIN_ID') {
                 alert('应用配置不正确, 请联系管理员.');
                 container.innerHTML = '<h1>配置不正确</h1>';
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const data = await getLatestData();
 
-            // 渲染状态
             if (data.status === 'Holiday') {
                 statusDisplay.textContent = '放假中';
                 statusDisplay.classList.add('holiday');
@@ -34,24 +32,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             dutySection.style.display = 'block';
 
             const queue = data.queue;
-            if (!queue || queue.length === 0) {
-                thisWeekDutyDisplay.textContent = '无人值日';
-                nextWeekDutyDisplay.textContent = '无人值日';
-                return;
-            }
 
-            // 计算当前周
-            const now = new Date();
-            const startDate = new Date(data.startDate);
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
-            const weekIndex = Math.floor((now - startDate) / oneWeek);
-
-            // 计算当前和下一个值日者
-            const thisWeekIndex = weekIndex % queue.length;
-            const nextWeekIndex = (weekIndex + 1) % queue.length;
-
-            thisWeekDutyDisplay.textContent = queue[thisWeekIndex] || '无人值日';
-            nextWeekDutyDisplay.textContent = queue[nextWeekIndex] || '无人值日';
+            // 新的、简单的显示逻辑
+            thisWeekDutyDisplay.textContent = (queue && queue.length > 0) ? queue[0] : '队列为空';
+            nextWeekDutyDisplay.textContent = (queue && queue.length > 1) ? queue[1] : '无人';
 
         } catch (error) {
             console.error('加载失败:', error);

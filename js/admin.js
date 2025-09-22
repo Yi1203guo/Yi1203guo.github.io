@@ -17,20 +17,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showLoading(message) {
         const overlay = document.createElement('div');
         overlay.id = 'loading-overlay';
-        overlay.style = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); display: flex; justify-content: center;
-            align-items: center; z-index: 999; font-size: 1.2em;
-        `;
+        overlay.style = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); display: flex; justify-content: center; align-items: center; z-index: 999; font-size: 1.2em;`;
         overlay.textContent = message;
         document.body.appendChild(overlay);
     }
 
     function hideLoading() {
         const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
+        if (overlay) overlay.remove();
     }
 
     // --- Data Operations ---
@@ -39,10 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         isSaving = true;
         showLoading('保存中...');
         try {
-            if (updateFunction) {
-                updateFunction();
-            }
+            if (updateFunction) updateFunction();
             await saveData(currentData);
+            // After saving, re-render the queue in case the update affected it
+            renderDutyQueue();
         } catch (error) {
             console.error('保存失败:', error);
             alert('数据保存失败, 请检查网络和配置后重试.');
@@ -81,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addDragAndDropListeners();
     }
 
-    // --- Event Handlers ---
+    // --- Event Handlers (Unchanged) ---
     addPersonnelBtn.addEventListener('click', () => {
         const name = personnelInput.value.trim();
         if (name) {
@@ -119,7 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (name) {
             updateAndSaveData(() => {
                 currentData.queue.push(name);
-                renderDutyQueue();
                 queueInput.value = '';
             });
         }
@@ -131,7 +124,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (confirm(`确定要从队列中删除 "${currentData.queue[index]}" 吗?`)) {
                 updateAndSaveData(() => {
                     currentData.queue.splice(index, 1);
-                    renderDutyQueue();
                 });
             }
         }
@@ -141,7 +133,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (confirm('确定要根据人员列表重置队列吗? 这将覆盖当前的队列.')) {
             updateAndSaveData(() => {
                 currentData.queue = [...currentData.personnel];
-                renderDutyQueue();
             });
         }
     });
@@ -152,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // --- Drag and Drop ---
+    // --- Drag and Drop (Unchanged) ---
     let dragStartIndex;
     function dragStart() { dragStartIndex = +this.getAttribute('data-index'); }
     function dragOver(e) { e.preventDefault(); }
@@ -162,7 +153,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAndSaveData(() => {
             const item = currentData.queue.splice(dragStartIndex, 1)[0];
             currentData.queue.splice(dragEndIndex, 0, item);
-            renderDutyQueue();
         });
     }
     function addDragAndDropListeners() {
@@ -174,11 +164,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- Initialization ---
+    // --- Initialization (NEW LOGIC) ---
     async function init() {
         showLoading('加载数据中...');
         try {
-            // 检查配置
             if (CONFIG.API_KEY === 'YOUR_API_KEY' || CONFIG.BIN_ID === 'YOUR_BIN_ID') {
                 alert('请先在 js/config.js 文件中设置您的 API Key 和 Bin ID!');
                 container.innerHTML = '<h1>配置不正确</h1><p>请根据 js/config.js 文件中的指示完成配置.</p>';
@@ -186,17 +175,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             currentData = await getLatestData();
 
-            // 检查并更新周开始日期 (安全地在管理端执行)
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
-            const now = new Date();
-            const startDate = new Date(currentData.startDate);
-            if (now - startDate >= oneWeek) {
-                const newStartDate = new Date(startDate.getTime() + Math.floor((now - startDate) / oneWeek) * oneWeek);
-                currentData.startDate = newStartDate.toISOString();
-                await saveData(currentData); // 保存更新后的日期
+            // --- NEW: Consuming Queue Logic ---
+            let dataWasModified = false;
+            if (currentData.status !== 'Holiday') {
+                const oneWeek = 7 * 24 * 60 * 60 * 1000;
+                const now = new Date();
+                const startDate = new Date(currentData.startDate);
+                const weeksPassed = Math.floor((now - startDate) / oneWeek);
+
+                if (weeksPassed > 0) {
+                    for (let i = 0; i < weeksPassed; i++) {
+                        if (currentData.queue.length > 0) {
+                            currentData.queue.shift(); // Remove person from front of queue
+                        }
+                        if (currentData.queue.length === 0) {
+                            // Refill queue from personnel list if it becomes empty
+                            currentData.queue = [...currentData.personnel];
+                        }
+                    }
+                    // Update startDate to the beginning of the current week cycle
+                    const newStartDate = new Date(startDate.getTime() + weeksPassed * oneWeek);
+                    currentData.startDate = newStartDate.toISOString();
+                    dataWasModified = true;
+                }
             }
 
+            // If the date logic modified the data, save it.
+            if (dataWasModified) {
+                await saveData(currentData);
+            }
+            
             renderAll();
+
         } catch (error) {
             console.error('初始化失败:', error);
             alert('数据加载失败, 请检查网络和配置后刷新页面.');
